@@ -59,14 +59,27 @@ void CEntityListener::OnEntityParentChanged(CEntityInstance *entityInstance, CEn
     {
         if (!strcmp(entityInstance->GetClassname(), weapon.first.c_str()))
         {
+            META_CONPRINTF("%s %s", g_PLAPI->GetLogTag(), entityInstance->GetClassname());
             CBasePlayerWeapon *playerWeapon = (CBasePlayerWeapon *)entityInstance;
             CCSWeaponBase *weaponBase = (CCSWeaponBase *)playerWeapon;
             CBasePlayerWeaponVData *vdata = weaponBase->GetWeaponVData();
+            CCSWeaponBaseVData *vdata2 = (CCSWeaponBaseVData *)playerWeapon->GetWeaponVData();
             if (modified.count(weapon.first) <= 0)
             {
                 vdata->m_bReserveAmmoAsClips = false;
+                if (!strcmp(entityInstance->GetClassname(), "weapon_hkp2000")) // ебанные инвалиды на Valve сделали так, что класснейм юспа и п2000 == weapon_hkp2000(т.е п2000), поэтому проверка...
+                {
+                    if (playerWeapon->m_iClip1 == 12) 
+                    {
+                        int uspClip = weaponClassnames["weapon_usp_silencer"];
+                        playerWeapon->m_pReserveAmmo()[0] = uspClip;
+                        vdata2->m_nPrimaryReserveAmmoMax = uspClip;
+                        utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
+                        modified.insert("weapon_usp_silencer");
+                        return;
+                    }
+                }
                 playerWeapon->m_pReserveAmmo()[0] = weapon.second;
-                CCSWeaponBaseVData *vdata2 = (CCSWeaponBaseVData *)playerWeapon->GetWeaponVData();
                 vdata2->m_nPrimaryReserveAmmoMax = weapon.second;
                 utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
                 modified.insert(weapon.first);
