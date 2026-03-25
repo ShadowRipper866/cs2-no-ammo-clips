@@ -59,7 +59,6 @@ void CEntityListener::OnEntityParentChanged(CEntityInstance *entityInstance, CEn
     {
         if (!strcmp(entityInstance->GetClassname(), weapon.first.c_str()))
         {
-            META_CONPRINTF("%s %s", g_PLAPI->GetLogTag(), entityInstance->GetClassname());
             CBasePlayerWeapon *playerWeapon = (CBasePlayerWeapon *)entityInstance;
             CCSWeaponBase *weaponBase = (CCSWeaponBase *)playerWeapon;
             CBasePlayerWeaponVData *vdata = weaponBase->GetWeaponVData();
