@@ -123,6 +123,7 @@ void NoAmmoClips::AllPluginsLoaded()
         return;
     }
     utils->StartupServer(g_PLID, Startup);
+    utils->MapEndHook(g_PLID, []() { modified.clear(); });
 }
 
 bool NoAmmoClips::Unload(char *error, size_t maxlen)
@@ -133,7 +134,7 @@ bool NoAmmoClips::Unload(char *error, size_t maxlen)
     return true;
 }
 const char *NoAmmoClips::GetLicense(){ return "Public"; }
-const char *NoAmmoClips::GetVersion(){ return "1.0.0"; }
+const char *NoAmmoClips::GetVersion(){ return "1.0.1"; }
 const char *NoAmmoClips::GetDate(){ return __DATE__; }
 const char *NoAmmoClips::GetLogTag(){return "[NAC]"; }
 const char *NoAmmoClips::GetAuthor(){ return "ShadowRipper"; }
