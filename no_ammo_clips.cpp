@@ -14,7 +14,7 @@ CGameEntitySystem *GameEntitySystem()
     return utils->GetCGameEntitySystem();
 }
 
-std::unordered_map<std::string, int> weaponClassnames = {
+std::unordered_map<std::string, int> weaponClassnames = { // <- мапа ИИшная, но вроде верная (класснейм оружия / всего патронов)
     {"weapon_glock", 120},
     {"weapon_usp_silencer", 24},
     {"weapon_hkp2000", 52},
