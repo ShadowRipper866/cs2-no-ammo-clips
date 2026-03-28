@@ -53,38 +53,69 @@ std::unordered_map<std::string, int> weaponClassnames = { // <- мапа ИИш�
 
 std::set<std::string> modified;
 
+bool IsPlayerValid(CEntityInstance *entityInstance)
+{
+    if (!strcmp(entityInstance->GetClassname(), "player"))
+    {
+        CBasePlayerPawn *pawn = (CBasePlayerPawn *)entityInstance;
+        CCSPlayerController *player = (CCSPlayerController *)pawn->m_hController().Get();
+        if (!player)
+            return false;
+        if (player->IsAlive() && !player->IsBot() && engine->IsClientFullyAuthenticated(player->GetPlayerSlot()))
+            return true;
+        return false;
+    }
+    return false;
+}
+
 void CEntityListener::OnEntityParentChanged(CEntityInstance *entityInstance, CEntityInstance *pNewParent)
 {
-    for (auto &weapon : weaponClassnames)
+    std::unordered_map<std::string, int>::iterator it = weaponClassnames.find(entityInstance->GetClassname());
+    if (it == weaponClassnames.end() || !pNewParent)
+        return;
+    const char *weaponName = it->first.c_str();
+    if (!strcmp(entityInstance->GetClassname(), weaponName))
     {
-        if (!strcmp(entityInstance->GetClassname(), weapon.first.c_str()))
+        CBasePlayerWeapon *playerWeapon = (CBasePlayerWeapon *)entityInstance;
+        CCSWeaponBase *weaponBase = (CCSWeaponBase *)playerWeapon;
+        CBasePlayerWeaponVData *vdata = weaponBase->GetWeaponVData();
+        CCSWeaponBaseVData *vdata2 = (CCSWeaponBaseVData *)playerWeapon->GetWeaponVData();
+        if (modified.count(it->first) == 0)
         {
-            CBasePlayerWeapon *playerWeapon = (CBasePlayerWeapon *)entityInstance;
-            CCSWeaponBase *weaponBase = (CCSWeaponBase *)playerWeapon;
-            CBasePlayerWeaponVData *vdata = weaponBase->GetWeaponVData();
-            CCSWeaponBaseVData *vdata2 = (CCSWeaponBaseVData *)playerWeapon->GetWeaponVData();
-            if (modified.count(weapon.first) <= 0)
+            vdata->m_bReserveAmmoAsClips = false;
+            if (!strcmp(weaponName, "weapon_hkp2000")) // ебанные инвалиды на Valve сделали так, что класснейм юспа и п2000 == weapon_hkp2000(т.е п2000), поэтому проверка...
             {
-                vdata->m_bReserveAmmoAsClips = false;
-                if (!strcmp(entityInstance->GetClassname(), "weapon_hkp2000")) // ебанные инвалиды на Valve сделали так, что класснейм юспа и п2000 == weapon_hkp2000(т.е п2000), поэтому проверка...
+                if (playerWeapon->m_iClip1 == 12)
                 {
-                    if (playerWeapon->m_iClip1 == 12) 
-                    {
-                        int uspClip = weaponClassnames["weapon_usp_silencer"];
-                        playerWeapon->m_pReserveAmmo()[0] = uspClip;
-                        vdata2->m_nPrimaryReserveAmmoMax = uspClip;
-                        utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
+                    int uspClip = weaponClassnames["weapon_usp_silencer"];
+                    playerWeapon->m_pReserveAmmo()[0] = uspClip;
+                    vdata2->m_nPrimaryReserveAmmoMax = uspClip;
+                    utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
+                    if (IsPlayerValid(pNewParent))
                         modified.insert("weapon_usp_silencer");
-                        return;
-                    }
+                    return;
                 }
-                playerWeapon->m_pReserveAmmo()[0] = weapon.second;
-                vdata2->m_nPrimaryReserveAmmoMax = weapon.second;
-                utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
-                modified.insert(weapon.first);
             }
+            if (!strcmp(weaponName, "weapon_deagle")) // я хуею...
+            {
+                if (playerWeapon->m_iClip1 == 8)
+                {
+                    int revolverClip = weaponClassnames["weapon_revolver"];
+                    playerWeapon->m_pReserveAmmo()[0] = revolverClip;
+                    vdata2->m_nPrimaryReserveAmmoMax = revolverClip;
+                    utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
+                    if (IsPlayerValid(pNewParent))
+                        modified.insert("weapon_revolver");
+                    return;
+                }
+            }
+            playerWeapon->m_pReserveAmmo()[0] = it->second;
+            vdata2->m_nPrimaryReserveAmmoMax = it->second;
+            utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
+            if (IsPlayerValid(pNewParent))
+                modified.insert(it->first);
         }
-    }   
+    } 
 }
 
 void Startup()
@@ -134,7 +165,7 @@ bool NoAmmoClips::Unload(char *error, size_t maxlen)
     return true;
 }
 const char *NoAmmoClips::GetLicense(){ return "Public"; }
-const char *NoAmmoClips::GetVersion(){ return "1.0.1"; }
+const char *NoAmmoClips::GetVersion(){ return "1.0.2"; }
 const char *NoAmmoClips::GetDate(){ return __DATE__; }
 const char *NoAmmoClips::GetLogTag(){return "[NAC]"; }
 const char *NoAmmoClips::GetAuthor(){ return "ShadowRipper"; }
