@@ -14,44 +14,47 @@ CGameEntitySystem *GameEntitySystem()
     return utils->GetCGameEntitySystem();
 }
 
-std::unordered_map<std::string, int> weaponClassnames = { // <- мапа ИИшная, но вроде верная (класснейм оружия / всего патронов)
-    {"weapon_glock", 120},
-    {"weapon_usp_silencer", 24},
-    {"weapon_hkp2000", 52},
-    {"weapon_p250", 26},
-    {"weapon_tec9", 90},
-    {"weapon_fiveseven", 100},
-    {"weapon_cz75a", 12},
-    {"weapon_elite", 120},
-    {"weapon_deagle", 35},
-    {"weapon_revolver", 8},
-    {"weapon_mac10", 100},
-    {"weapon_mp9", 120},
-    {"weapon_mp7", 120},
-    {"weapon_mp5sd", 120},
-    {"weapon_ump45", 100},
-    {"weapon_p90", 100},
-    {"weapon_bizon", 120},
-    {"weapon_ak47", 90},
-    {"weapon_m4a1", 90},
-    {"weapon_m4a1_silencer", 80},
-    {"weapon_galilar", 105},
-    {"weapon_famas", 75},
-    {"weapon_aug", 90},
-    {"weapon_sg556", 90},
-    {"weapon_ssg08", 90},
-    {"weapon_awp", 30},
-    {"weapon_g3sg1", 90},
-    {"weapon_scar20", 90},
-    {"weapon_m249", 200},
-    {"weapon_negev", 300},
-    {"weapon_nova", 32},
-    {"weapon_xm1014", 32},
-    {"weapon_mag7", 32},
-    {"weapon_sawedoff", 32}
+#include <unordered_map>
+
+// {Индекс -> патроны}
+std::unordered_map<int, int> weaponIndexes = {
+    {1, 35},   // deagle
+    {2, 120},  // беретты
+    {3, 100},  // fiveseven
+    {4, 120},  // glock
+    {7, 90},   // ak47
+    {8, 90},   // aug
+    {9, 30},   // awp
+    {10, 75},  // famas
+    {11, 90},  // g3sg1
+    {13, 105}, // galilar
+    {14, 200}, // m249
+    {16, 90},  // m4a1 (мка четверка)
+    {17, 100}, // mac10
+    {19, 100}, // p90
+    {23, 120}, // mp5sd
+    {24, 100}, // ump45
+    {25, 32},  // xm1014
+    {26, 120}, // bizon
+    {27, 32},  // mag7
+    {28, 300}, // negev
+    {29, 32},  // sawedoff
+    {30, 90},  // tec9
+    {32, 52},  // hkp2000
+    {33, 120}, // mp7
+    {34, 120}, // mp9
+    {35, 32},  // nova
+    {36, 26},  // p250
+    {38, 90},  // scar20
+    {39, 90},  // sg553)
+    {40, 90},  // ssg08
+    {60, 80},  // m4a1_silencer
+    {61, 24},  // usp_silencer
+    {63, 12},  // cz75a
+    {64, 8}    // revolver
 };
 
-std::set<std::string> modified;
+std::set<int> modified;
 
 bool IsPlayerValid(CEntityInstance *entityInstance)
 {
@@ -70,52 +73,35 @@ bool IsPlayerValid(CEntityInstance *entityInstance)
 
 void CEntityListener::OnEntityParentChanged(CEntityInstance *entityInstance, CEntityInstance *pNewParent)
 {
-    std::unordered_map<std::string, int>::iterator it = weaponClassnames.find(entityInstance->GetClassname());
-    if (it == weaponClassnames.end() || !pNewParent)
+    if (!pNewParent)
+    {
         return;
-    const char *weaponName = it->first.c_str();
-    if (!strcmp(entityInstance->GetClassname(), weaponName))
+    }
+    if (!strncmp(entityInstance->GetClassname(), "weapon", 6))
     {
         CBasePlayerWeapon *playerWeapon = (CBasePlayerWeapon *)entityInstance;
         CCSWeaponBase *weaponBase = (CCSWeaponBase *)playerWeapon;
         CBasePlayerWeaponVData *vdata = weaponBase->GetWeaponVData();
         CCSWeaponBaseVData *vdata2 = (CCSWeaponBaseVData *)playerWeapon->GetWeaponVData();
-        if (modified.count(it->first) == 0)
+        int weaponIndex = playerWeapon->m_AttributeManager().m_Item().m_iItemDefinitionIndex(); // бескостыльный фикс!!!
+        std::unordered_map<int, int>::iterator it = weaponIndexes.find(weaponIndex);
+        if (it == weaponIndexes.end())
+        {
+            return;
+        }
+        if (modified.count(weaponIndex) == 0)
         {
             vdata->m_bReserveAmmoAsClips = false;
-            if (!strcmp(weaponName, "weapon_hkp2000")) // ебанные инвалиды на Valve сделали так, что класснейм юспа и п2000 == weapon_hkp2000(т.е п2000), поэтому проверка...
-            {
-                if (playerWeapon->m_iClip1 == 12)
-                {
-                    int uspClip = weaponClassnames["weapon_usp_silencer"];
-                    playerWeapon->m_pReserveAmmo()[0] = uspClip;
-                    vdata2->m_nPrimaryReserveAmmoMax = uspClip;
-                    utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
-                    if (IsPlayerValid(pNewParent))
-                        modified.insert("weapon_usp_silencer");
-                    return;
-                }
-            }
-            if (!strcmp(weaponName, "weapon_deagle")) // я хуею...
-            {
-                if (playerWeapon->m_iClip1 == 8)
-                {
-                    int revolverClip = weaponClassnames["weapon_revolver"];
-                    playerWeapon->m_pReserveAmmo()[0] = revolverClip;
-                    vdata2->m_nPrimaryReserveAmmoMax = revolverClip;
-                    utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
-                    if (IsPlayerValid(pNewParent))
-                        modified.insert("weapon_revolver");
-                    return;
-                }
-            }
-            playerWeapon->m_pReserveAmmo()[0] = it->second;
-            vdata2->m_nPrimaryReserveAmmoMax = it->second;
+            int weaponAmmo = it->second;
+            playerWeapon->m_pReserveAmmo()[0] = weaponAmmo;
+            vdata2->m_nPrimaryReserveAmmoMax = weaponAmmo;
             utils->SetStateChanged(playerWeapon, "CBasePlayerWeapon", "m_iReserveAmmo");
             if (IsPlayerValid(pNewParent))
-                modified.insert(it->first);
+            {
+                modified.insert(weaponIndex);
+            }
         }
-    } 
+    }
 }
 
 void Startup()
@@ -164,11 +150,11 @@ bool NoAmmoClips::Unload(char *error, size_t maxlen)
     g_pGameEntitySystem->RemoveListenerEntity(&entityListener);
     return true;
 }
-const char *NoAmmoClips::GetLicense(){ return "Public"; }
-const char *NoAmmoClips::GetVersion(){ return "1.0.2"; }
-const char *NoAmmoClips::GetDate(){ return __DATE__; }
-const char *NoAmmoClips::GetLogTag(){return "[NAC]"; }
-const char *NoAmmoClips::GetAuthor(){ return "ShadowRipper"; }
-const char *NoAmmoClips::GetDescription(){ return ""; }
-const char *NoAmmoClips::GetName(){ return "No Ammo Clips"; }
-const char *NoAmmoClips::GetURL(){ return ""; }
+const char *NoAmmoClips::GetLicense() { return "Public"; }
+const char *NoAmmoClips::GetVersion() { return "1.0.3"; }
+const char *NoAmmoClips::GetDate() { return __DATE__; }
+const char *NoAmmoClips::GetLogTag() { return "[NAC]"; }
+const char *NoAmmoClips::GetAuthor() { return "ShadowRipper"; }
+const char *NoAmmoClips::GetDescription() { return ""; }
+const char *NoAmmoClips::GetName() { return "No Ammo Clips"; }
+const char *NoAmmoClips::GetURL() { return ""; }
